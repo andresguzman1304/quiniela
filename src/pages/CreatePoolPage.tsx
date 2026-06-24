@@ -21,6 +21,10 @@ function newRow(): MatchRow {
 
 type Mode = 'predict' | 'cascarita'
 
+// Cada opción llena justo una cuadrícula de marcadores (tope+1)²:
+// 9→2-2, 16→3-3, 25→4-4, 36→5-5, 49→6-6, 100→9-9.
+const PLAYER_OPTS = [9, 16, 25, 36, 49, 100]
+
 export function CreatePoolPage() {
   const navigate = useNavigate()
   const plugin = pluginFor('football_exact_score')
@@ -183,21 +187,25 @@ export function CreatePoolPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label htmlFor="targetPlayers" className="block text-sm font-medium text-gray-700">
-                  ¿Cuántos números quieres repartir?
-                </label>
-                <input
-                  id="targetPlayers"
-                  type="number"
-                  min={1}
-                  step="1"
-                  value={targetPlayers}
-                  onChange={(e) => setTargetPlayers(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
-                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-                />
+                <span className="block text-sm font-medium text-gray-700">¿Cuántos números quieres repartir?</span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {PLAYER_OPTS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setTargetPlayers(n)}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                        targetPlayers === n
+                          ? 'bg-brand text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
                 <p className="mt-1 text-xs text-gray-500">
                   Tope 0-{maxGoals}: {gridCount} marcadores posibles (0-0 a {maxGoals}-{maxGoals}).
-                  {gridCount > targetPlayers && ` Alcanza para tus ${targetPlayers}.`}
                 </p>
               </div>
               <div>
