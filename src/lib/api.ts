@@ -260,6 +260,20 @@ export function useSetItemResult(poolId: string) {
   })
 }
 
+// El organizador borra una quiniela no iniciada.
+export function useDeletePool() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (poolId: string): Promise<void> => {
+      const { error } = await supabase.rpc('delete_pool', { p_pool: poolId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my_pools'] })
+    },
+  })
+}
+
 // El organizador edita la configuración de una quiniela ya creada.
 export function useUpdatePoolSettings(poolId: string) {
   const qc = useQueryClient()

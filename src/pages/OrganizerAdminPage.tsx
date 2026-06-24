@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   usePool,
@@ -9,6 +9,7 @@ import {
   useSetItemResult,
   useAssignScorelines,
   useUpdatePoolSettings,
+  useDeletePool,
 } from '@/lib/api'
 import { useAuth } from '@/auth/AuthProvider'
 import { pluginFor } from '@/pools/types/registry'
@@ -211,7 +212,70 @@ export function OrganizerAdminPage() {
           )}
         </div>
       </section>
+
+      {/* Zona de peligro */}
+      <DangerZone pool={pool} />
     </motion.div>
+  )
+}
+
+function DangerZone({ pool }: { pool: Pool }) {
+  const navigate = useNavigate()
+  const del = useDeletePool()
+  const [confirming, setConfirming] = useState(false)
+
+  async function handleDelete() {
+    try {
+      await del.mutateAsync(pool.id)
+      navigate('/')
+    } catch {
+      /* error mostrado abajo via del.error */
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-lg font-semibold text-red-700">Zona de peligro</h2>
+      <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
+        <p className="text-sm text-red-700">
+          Borra la quiniela por completo. Solo se puede mientras no haya iniciado ningún partido.
+          Se eliminan todos los números, predicciones y pagos. No se puede deshacer.
+        </p>
+        {!confirming ? (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="mt-3 w-full rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+          >
+            Borrar quiniela
+          </button>
+        ) : (
+          <div className="mt-3">
+            <p className="text-sm font-medium text-red-800">¿Seguro? Esta acción no se puede deshacer.</p>
+            <div className="mt-2 flex gap-2">
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                disabled={del.isPending}
+                onClick={handleDelete}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {del.isPending ? 'Borrando…' : 'Sí, borrar'}
+              </motion.button>
+              <button
+                type="button"
+                disabled={del.isPending}
+                onClick={() => setConfirming(false)}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+        {del.error && <p className="mt-2 text-sm text-red-600">{(del.error as Error).message}</p>}
+      </div>
+    </section>
   )
 }
 
