@@ -21,12 +21,6 @@ function newRow(): MatchRow {
 
 type Mode = 'predict' | 'cascarita'
 
-const GOAL_OPTS: { label: string; max: number }[] = [
-  { label: '0–3', max: 3 },
-  { label: '0–5', max: 5 },
-  { label: '0–9', max: 9 },
-]
-
 export function CreatePoolPage() {
   const navigate = useNavigate()
   const plugin = pluginFor('football_exact_score')
@@ -34,12 +28,16 @@ export function CreatePoolPage() {
   const [mode, setMode] = useState<Mode>('predict')
   const [title, setTitle] = useState('')
   const [pesos, setPesos] = useState(100)
-  const [maxTickets, setMaxTickets] = useState<1 | 2>(2)
+  const [maxTickets, setMaxTickets] = useState(2)
   // Config para modo "predicción libre"
   const [predictConfig, setPredictConfig] = useState<FootballPoolConfig>(() => plugin.defaultConfig())
   // Config para cascarita
-  const [maxGoals, setMaxGoals] = useState(3)
+  const [targetPlayers, setTargetPlayers] = useState(16)
   const [unique, setUnique] = useState(false)
+  // El rango de marcadores se deriva de cuántos números se quieren repartir:
+  // se elige el menor tope cuya cuadrícula (tope+1)² alcance ese número.
+  const maxGoals = Math.min(50, Math.max(1, Math.ceil(Math.sqrt(Math.max(1, Math.floor(targetPlayers) || 1))) - 1))
+  const gridCount = (maxGoals + 1) ** 2
   const [matches, setMatches] = useState<MatchRow[]>(() => [newRow()])
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -155,27 +153,21 @@ export function CreatePoolPage() {
             </div>
           </div>
           <div>
-            <span className="block text-sm font-medium text-gray-700">
+            <label htmlFor="maxTickets" className="block text-sm font-medium text-gray-700">
               {mode === 'cascarita' ? 'Máx. números por persona' : 'Máx. boletos por persona'}
-            </span>
-            <div className="mt-2 flex gap-2">
-              {([1, 2] as const).map((n) => (
-                <motion.button
-                  key={n}
-                  type="button"
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setMaxTickets(n)}
-                  className={
-                    'flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ' +
-                    (maxTickets === n
-                      ? 'border-brand bg-brand text-white'
-                      : 'border-gray-300 bg-white text-gray-700')
-                  }
-                >
-                  {n}
-                </motion.button>
-              ))}
-            </div>
+            </label>
+            <input
+              id="maxTickets"
+              type="number"
+              min={1}
+              step="1"
+              value={maxTickets}
+              onChange={(e) => setMaxTickets(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
+              className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Cada persona puede comprar hasta {maxTickets} {maxTickets === 1 ? (mode === 'cascarita' ? 'número' : 'boleto') : (mode === 'cascarita' ? 'números' : 'boletos')}.
+            </p>
           </div>
         </div>
 
@@ -191,25 +183,21 @@ export function CreatePoolPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <span className="block text-sm font-medium text-gray-700">Tope de goles por equipo</span>
-                <div className="mt-2 flex gap-2">
-                  {GOAL_OPTS.map((o) => (
-                    <button
-                      key={o.max}
-                      type="button"
-                      onClick={() => setMaxGoals(o.max)}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                        maxGoals === o.max
-                          ? 'bg-brand text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
+                <label htmlFor="targetPlayers" className="block text-sm font-medium text-gray-700">
+                  ¿Cuántos números quieres repartir?
+                </label>
+                <input
+                  id="targetPlayers"
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={targetPlayers}
+                  onChange={(e) => setTargetPlayers(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
+                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                />
                 <p className="mt-1 text-xs text-gray-500">
-                  {(maxGoals + 1) ** 2} marcadores posibles (0-0 a {maxGoals}-{maxGoals}).
+                  Tope 0-{maxGoals}: {gridCount} marcadores posibles (0-0 a {maxGoals}-{maxGoals}).
+                  {gridCount > targetPlayers && ` Alcanza para tus ${targetPlayers}.`}
                 </p>
               </div>
               <div>
