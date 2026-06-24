@@ -189,6 +189,22 @@ export function useBuyTicket(poolId: string) {
   })
 }
 
+// Liberar / "descomprar" un número propio (antes del partido).
+export function useReleaseTicket(poolId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (ticketId: string): Promise<void> => {
+      const { error } = await supabase.rpc('release_ticket', { p_ticket: ticketId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my_tickets', poolId] })
+      qc.invalidateQueries({ queryKey: ['leaderboard', poolId] })
+      qc.invalidateQueries({ queryKey: ['pool_stats', poolId] })
+    },
+  })
+}
+
 export function useSavePrediction(poolId: string, ticketId: string) {
   const qc = useQueryClient()
   return useMutation({
