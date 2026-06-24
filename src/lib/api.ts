@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type {
+  DrawResultRow,
   FootballPoolConfig,
   FootballScore,
   LeaderboardRow,
+  MemberRow,
   Pool,
   PoolItem,
   PoolPreview,
@@ -98,6 +100,32 @@ export function useLeaderboard(poolId?: string) {
       const { data, error } = await supabase.rpc('get_leaderboard', { p_pool: poolId! })
       if (error) throw error
       return (data ?? []) as LeaderboardRow[]
+    },
+  })
+}
+
+// Vista del sorteo (solo organizador): qué marcador le tocó a cada número.
+export function useDrawResults(poolId?: string) {
+  return useQuery({
+    queryKey: ['draw_results', poolId],
+    enabled: !!poolId,
+    queryFn: async (): Promise<DrawResultRow[]> => {
+      const { data, error } = await supabase.rpc('get_draw_results', { p_pool: poolId! })
+      if (error) throw error
+      return (data ?? []) as DrawResultRow[]
+    },
+  })
+}
+
+// Miembros de la quiniela (solo organizador): incluye a quien aún no compra número.
+export function useMembers(poolId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['members', poolId],
+    enabled: !!poolId && enabled,
+    queryFn: async (): Promise<MemberRow[]> => {
+      const { data, error } = await supabase.rpc('get_members', { p_pool: poolId! })
+      if (error) throw error
+      return (data ?? []) as MemberRow[]
     },
   })
 }
@@ -301,6 +329,46 @@ export function useUpdatePoolSettings(poolId: string) {
   })
 }
 
+// El organizador corrige el nombre de un jugador (p. ej. tecleó el código por error).
+export function useRenameMember(poolId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: { userId: string; name: string }): Promise<void> => {
+      const { error } = await supabase.rpc('admin_rename_member', {
+        p_pool: poolId,
+        p_user: vars.userId,
+        p_name: vars.name,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['members', poolId] })
+      qc.invalidateQueries({ queryKey: ['leaderboard', poolId] })
+      qc.invalidateQueries({ queryKey: ['draw_results', poolId] })
+    },
+  })
+}
+
+// El organizador saca por completo a un jugador (antes de que inicie ningún partido).
+export function useRemoveMember(poolId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (userId: string): Promise<void> => {
+      const { error } = await supabase.rpc('admin_remove_member', {
+        p_pool: poolId,
+        p_user: userId,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['members', poolId] })
+      qc.invalidateQueries({ queryKey: ['leaderboard', poolId] })
+      qc.invalidateQueries({ queryKey: ['draw_results', poolId] })
+      qc.invalidateQueries({ queryKey: ['pool_stats', poolId] })
+    },
+  })
+}
+
 // Cascarita: el organizador "sortea" y se asigna un marcador al azar a cada boleto.
 export function useAssignScorelines(poolId: string) {
   const qc = useQueryClient()
@@ -312,6 +380,7 @@ export function useAssignScorelines(poolId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['predictions'] })
+      qc.invalidateQueries({ queryKey: ['draw_results', poolId] })
       qc.invalidateQueries({ queryKey: ['leaderboard', poolId] })
       qc.invalidateQueries({ queryKey: ['pool_stats', poolId] })
     },

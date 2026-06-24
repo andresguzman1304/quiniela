@@ -8,6 +8,15 @@ import { getPoolPreview } from '@/lib/api'
 import { formatMoney } from '@/lib/format'
 import type { PoolPreview } from '@/lib/types'
 
+// ¿El "nombre" parece en realidad un código de invitación? (mismo texto que el
+// código, o un token corto en mayúsculas con números, como "BC3A79").
+function looksLikeCode(name: string, code: string): boolean {
+  const n = name.replace(/\s+/g, '').toUpperCase()
+  if (!n) return false
+  if (code && n === code.toUpperCase()) return true
+  return /^[A-Z0-9]{5,8}$/.test(n) && /\d/.test(n)
+}
+
 export function JoinPoolPage() {
   const { code: codeParam } = useParams<{ code?: string }>()
   const navigate = useNavigate()
@@ -53,8 +62,15 @@ export function JoinPoolPage() {
   async function handleJoin() {
     const clean = code.trim().toUpperCase()
     if (!clean) return
-    if (!name.trim()) {
+    const cleanName = name.trim()
+    if (!cleanName) {
       setJoinError('Escribe tu nombre para entrar.')
+      return
+    }
+    // Evita el error común (sobre todo en personas mayores) de pegar el código
+    // de invitación en la casilla del nombre.
+    if (looksLikeCode(cleanName, clean)) {
+      setJoinError('Eso parece un código, no un nombre. Escribe tu nombre — por ejemplo: María.')
       return
     }
     setJoining(true)
@@ -146,25 +162,38 @@ export function JoinPoolPage() {
 
           {!session && (
             <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-gray-700">Tu nombre</label>
+              <label htmlFor="joinName" className="mb-1 block text-base font-semibold text-gray-800">
+                Escribe tu nombre
+              </label>
               <input
+                id="joinName"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="¿Cómo te llamas?"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                onChange={(e) => {
+                  setName(e.target.value)
+                  setJoinError(null)
+                }}
+                autoComplete="name"
+                placeholder="Ejemplo: María González"
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-lg text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
               />
-              <p className="mt-1 text-xs text-gray-400">Sin correo ni contraseña — solo tu nombre.</p>
+              <p className="mt-1.5 text-sm text-gray-500">
+                Tu nombre, no el código. Sin correo ni contraseña.
+              </p>
             </div>
           )}
 
-          {joinError && <p className="mt-3 text-sm text-red-700">{joinError}</p>}
+          {joinError && (
+            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-base text-red-700">
+              {joinError}
+            </p>
+          )}
 
           <motion.button
             type="button"
             whileTap={{ scale: 0.97 }}
             disabled={joining}
             onClick={() => void handleJoin()}
-            className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+            className="mt-4 w-full rounded-xl bg-brand px-4 py-4 text-lg font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
           >
             {joining ? 'Entrando…' : 'Unirme'}
           </motion.button>

@@ -75,6 +75,29 @@ export interface LeaderboardRow {
   rank: number
 }
 
+// Miembro de la quiniela (vista del organizador): incluye a quien aún no compra
+// número. Sirve para corregir nombres y quitar duplicados.
+export interface MemberRow {
+  user_id: string
+  display_name: string
+  ticket_count: number
+  is_organizer: boolean
+  joined_at: string
+}
+
+// Fila de la vista del sorteo (solo organizador): qué marcador le tocó a cada
+// número en cada partido. Una fila por (boleto, partido).
+export interface DrawResultRow {
+  ticket_id: string
+  ticket_number: number
+  display_name: string
+  paid: boolean
+  pool_item_id: string
+  item_index: number
+  item_payload: { home: string; away: string }
+  payload: FootballScore
+}
+
 export interface PoolStats {
   total_tickets: number
   paid_tickets: number
