@@ -244,6 +244,33 @@ export function useSetItemResult(poolId: string) {
   })
 }
 
+// El organizador edita la configuración de una quiniela ya creada.
+export function useUpdatePoolSettings(poolId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: {
+      title?: string
+      price_cents?: number
+      max_tickets?: number
+      config?: FootballPoolConfig
+    }): Promise<void> => {
+      const { error } = await supabase.rpc('update_pool_settings', {
+        p_pool: poolId,
+        p_title: vars.title ?? null,
+        p_price_cents: vars.price_cents ?? null,
+        p_max_tickets: vars.max_tickets ?? null,
+        p_config: vars.config ?? null,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pool', poolId] })
+      qc.invalidateQueries({ queryKey: ['my_pools'] })
+      qc.invalidateQueries({ queryKey: ['pool_stats', poolId] })
+    },
+  })
+}
+
 // Cascarita: el organizador "sortea" y se asigna un marcador al azar a cada boleto.
 export function useAssignScorelines(poolId: string) {
   const qc = useQueryClient()

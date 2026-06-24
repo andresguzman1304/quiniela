@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { pluginFor } from '@/pools/types/registry'
 import { TeamPicker } from '@/components/TeamPicker'
 import { useCreatePool } from '@/lib/api'
+import { PLAYER_OPTS, goalsForPlayers, gridCount } from '@/lib/cascarita'
 import type { FootballPoolConfig, PoolType } from '@/lib/types'
 
 interface MatchRow {
@@ -21,10 +22,6 @@ function newRow(): MatchRow {
 
 type Mode = 'predict' | 'cascarita'
 
-// Cada opción llena justo una cuadrícula de marcadores (tope+1)²:
-// 9→2-2, 16→3-3, 25→4-4, 36→5-5, 49→6-6, 100→9-9.
-const PLAYER_OPTS = [9, 16, 25, 36, 49, 100]
-
 export function CreatePoolPage() {
   const navigate = useNavigate()
   const plugin = pluginFor('football_exact_score')
@@ -38,10 +35,9 @@ export function CreatePoolPage() {
   // Config para cascarita
   const [targetPlayers, setTargetPlayers] = useState(16)
   const [unique, setUnique] = useState(false)
-  // El rango de marcadores se deriva de cuántos números se quieren repartir:
-  // se elige el menor tope cuya cuadrícula (tope+1)² alcance ese número.
-  const maxGoals = Math.min(50, Math.max(1, Math.ceil(Math.sqrt(Math.max(1, Math.floor(targetPlayers) || 1))) - 1))
-  const gridCount = (maxGoals + 1) ** 2
+  // El rango de marcadores se deriva de cuántos números se quieren repartir.
+  const maxGoals = goalsForPlayers(targetPlayers)
+  const grid = gridCount(maxGoals)
   const [matches, setMatches] = useState<MatchRow[]>(() => [newRow()])
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -205,7 +201,7 @@ export function CreatePoolPage() {
                   ))}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Tope 0-{maxGoals}: {gridCount} marcadores posibles (0-0 a {maxGoals}-{maxGoals}).
+                  Tope 0-{maxGoals}: {grid} marcadores posibles (0-0 a {maxGoals}-{maxGoals}).
                 </p>
               </div>
               <div>

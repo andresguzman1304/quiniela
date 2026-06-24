@@ -8,11 +8,13 @@ import {
   useSetTicketPaid,
   useSetItemResult,
   useAssignScorelines,
+  useUpdatePoolSettings,
 } from '@/lib/api'
 import { useAuth } from '@/auth/AuthProvider'
 import { pluginFor } from '@/pools/types/registry'
 import { MatchCard } from '@/components/MatchCard'
-import type { FootballScore } from '@/lib/types'
+import { PLAYER_OPTS, goalsForPlayers, gridCount } from '@/lib/cascarita'
+import type { FootballScore, Pool } from '@/lib/types'
 
 export function OrganizerAdminPage() {
   const { poolId } = useParams<{ poolId: string }>()
@@ -84,6 +86,9 @@ export function OrganizerAdminPage() {
 
       <h1 className="mt-3 text-2xl font-bold text-gray-900">Administración</h1>
       <p className="mt-1 text-sm text-gray-500">{pool.title}</p>
+
+      {/* Configuración editable */}
+      <PoolSettingsSection pool={pool} />
 
       {/* Sorteo (solo cascarita) */}
       {pool.type === 'random_scoreline' && (
@@ -207,5 +212,129 @@ export function OrganizerAdminPage() {
         </div>
       </section>
     </motion.div>
+  )
+}
+
+function PoolSettingsSection({ pool }: { pool: Pool }) {
+  const isCascarita = pool.type === 'random_scoreline'
+  const update = useUpdatePoolSettings(pool.id)
+
+  const [maxTickets, setMaxTickets] = useState(pool.max_tickets_per_user)
+  const [targetPlayers, setTargetPlayers] = useState(() => gridCount(pool.config.max_goals ?? 3))
+  const [unique, setUnique] = useState(!!pool.config.unique)
+  const [saved, setSaved] = useState(false)
+
+  const maxGoals = goalsForPlayers(targetPlayers)
+  const grid = gridCount(maxGoals)
+
+  async function handleSave() {
+    setSaved(false)
+    await update.mutateAsync({
+      max_tickets: maxTickets,
+      config: isCascarita ? { ...pool.config, max_goals: maxGoals, unique } : undefined,
+    })
+    setSaved(true)
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-lg font-semibold text-gray-900">Configuración ⚙️</h2>
+      <div className="mt-3 space-y-4 rounded-xl border border-gray-200 bg-white p-4">
+        {isCascarita && (
+          <>
+            <div>
+              <span className="block text-sm font-medium text-gray-700">¿Cuántos números quieres repartir?</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PLAYER_OPTS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => {
+                      setTargetPlayers(n)
+                      setSaved(false)
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      targetPlayers === n ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Tope 0-{maxGoals}: {grid} marcadores posibles (0-0 a {maxGoals}-{maxGoals}).
+              </p>
+            </div>
+            <div>
+              <span className="block text-sm font-medium text-gray-700">Repartición de números</span>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnique(false)
+                    setSaved(false)
+                  }}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    !unique ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Repetibles
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnique(true)
+                    setSaved(false)
+                  }}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    unique ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Únicos
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+        <div>
+          <label htmlFor="editMaxTickets" className="block text-sm font-medium text-gray-700">
+            {isCascarita ? 'Máx. números por persona' : 'Máx. boletos por persona'}
+          </label>
+          <input
+            id="editMaxTickets"
+            type="number"
+            min={1}
+            step="1"
+            value={maxTickets}
+            onChange={(e) => {
+              setMaxTickets(Math.max(1, Math.floor(Number(e.target.value)) || 1))
+              setSaved(false)
+            }}
+            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+        </div>
+
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          type="button"
+          disabled={update.isPending}
+          onClick={handleSave}
+          className="w-full rounded-lg bg-brand px-4 py-2.5 font-semibold text-white disabled:opacity-60"
+        >
+          {update.isPending ? 'Guardando…' : 'Guardar configuración'}
+        </motion.button>
+
+        {saved && !update.isPending && (
+          <p className="text-sm text-brand-dark">✓ Configuración guardada.</p>
+        )}
+        {update.error && <p className="text-sm text-red-600">{(update.error as Error).message}</p>}
+
+        {isCascarita && (
+          <p className="text-xs text-gray-500">
+            Si cambias el tope de marcadores después de sortear, vuelve a sortear para reasignar.
+          </p>
+        )}
+      </div>
+    </section>
   )
 }
