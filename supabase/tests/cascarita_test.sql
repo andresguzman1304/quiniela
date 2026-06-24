@@ -27,9 +27,11 @@ begin
   perform set_config('request.jwt.claim.sub', p1::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', p1, 'role', 'authenticated')::text, true);
   perform join_pool((select join_code from pools where id = v_pool));
+  perform buy_ticket(v_pool);                  -- p1 compra su número
   perform set_config('request.jwt.claim.sub', p2::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', p2, 'role', 'authenticated')::text, true);
   perform join_pool((select join_code from pools where id = v_pool));
+  perform buy_ticket(v_pool);                  -- p2 compra su número
 
   -- Antes del sorteo: sin marcadores
   select count(*) into n from predictions pr join tickets t on t.id = pr.ticket_id where t.pool_id = v_pool;
@@ -76,9 +78,11 @@ begin
     perform set_config('request.jwt.claim.sub', p1::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', p1, 'role', 'authenticated')::text, true);
     perform join_pool((select join_code from pools where id = u_pool));
+    perform buy_ticket(u_pool);
     perform set_config('request.jwt.claim.sub', p2::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', p2, 'role', 'authenticated')::text, true);
     perform join_pool((select join_code from pools where id = u_pool));
+    perform buy_ticket(u_pool);
     perform set_config('request.jwt.claim.sub', org::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', org, 'role', 'authenticated')::text, true);
     perform assign_random_scorelines(u_pool);

@@ -48,6 +48,7 @@ begin
   perform set_config('request.jwt.claims',
     json_build_object('sub', bob, 'role', 'authenticated')::text, true);
   perform join_pool(v_code);
+  perform buy_ticket(v_pool);   -- buyflow: unirse da pertenencia, el boleto se compra aparte
   select id into t_bob from tickets where pool_id = v_pool and user_id = bob;
   insert into predictions (ticket_id, pool_item_id, payload) values
     (t_bob, it1, '{"home":1,"away":0}'::jsonb),   -- mismo ganador (no exacto) -> result
